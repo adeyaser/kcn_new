@@ -1,0 +1,6 @@
+.DS_Store
+
+application/cache/*
+application/logs/*
+application/config/*
+application/helpers/*
