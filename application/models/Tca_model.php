@@ -33,6 +33,11 @@ class Tca_model extends CI_Model {
             $i++;
         }
 
+        // Additional filter: specific Request Planning
+        if (!empty($_POST['filter_planning'])) {
+            $this->db->where('pr.request_no', $_POST['filter_planning']);
+        }
+
         if(isset($_POST['order'])) {
             $this->db->order_by($this->column_order[$_POST['order']['0']['column']], $_POST['order']['0']['dir']);
         } else if(isset($this->order)) {

@@ -135,7 +135,7 @@ function loadData() {
     var tbody = $('#tableBody');
     tbody.html('<tr><td colspan="11" class="text-center py-5 text-muted"><i class="fas fa-circle-notch fa-spin me-2"></i>Loading...</td></tr>');
 
-    $.post('<?= site_url("operations/receiving/ajax_list") ?>', {
+    $.post('<?= site_url("monitoring/gate_monitor/ajax_list") ?>', {
         planning_id:   $('#filterPlanning').val(),
         activity_type: $('#filterType').val(),
         status:        $('#filterStatus').val(),
@@ -179,7 +179,7 @@ function resetFilter() {
 }
 
 function refreshStats() {
-    $.getJSON('<?= site_url("operations/receiving/ajax_stats") ?>', function(res) {
+    $.getJSON('<?= site_url("monitoring/gate_monitor/ajax_stats") ?>', function(res) {
         $('#stat_receiving').text(res.receiving_today);
         $('#stat_delivery').text(res.delivery_today);
         $('#stat_inyard').text(res.in_yard);

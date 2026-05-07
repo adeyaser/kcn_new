@@ -6,17 +6,15 @@
                 <div class="badge bg-success">Overall: 64% Full</div>
             </div>
             <div class="card-body">
-                <!-- Visual Yard Representation (Simplified) -->
                 <div class="row g-2">
                     <?php 
-                    $blocks = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-                    foreach($blocks as $block): 
+                    foreach($blocks as $b): 
                         $percentage = rand(40, 90);
                         $color = ($percentage > 80) ? 'bg-danger' : (($percentage > 60) ? 'bg-warning' : 'bg-success');
                     ?>
                     <div class="col-md-3">
                         <div class="p-3 border rounded-3 text-center mb-2">
-                            <div class="fw-bold text-dark">BLOCK <?= $block ?></div>
+                            <div class="fw-bold text-dark"><?= $b->block_name ?></div>
                             <div class="progress mt-2" style="height: 8px;">
                                 <div class="progress-bar <?= $color ?>" style="width: <?= $percentage ?>%"></div>
                             </div>
@@ -35,7 +33,7 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle" id="tableMovements">
                         <thead>
                             <tr>
                                 <th>Time</th>
@@ -43,25 +41,17 @@
                                 <th>From Loc</th>
                                 <th>To Loc</th>
                                 <th>Reason</th>
-                                <th>Equipment</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td class="small">11:20</td>
-                                <td class="fw-bold">MSKU9082123</td>
-                                <td class="text-muted small">Truck B 9912</td>
-                                <td class="text-primary fw-bold">A-01-02-01</td>
-                                <td>Receiving</td>
-                                <td>RS-01</td>
-                            </tr>
-                            <tr>
-                                <td class="small">11:15</td>
-                                <td class="fw-bold">TCNU4451221</td>
-                                <td class="text-muted small">C-02-05-03</td>
-                                <td class="text-primary fw-bold">C-02-05-04</td>
-                                <td>Shifting</td>
-                                <td>RS-04</td>
+                                <td class="small">Just now</td>
+                                <td class="fw-bold text-info">SEARCH_DEMO</td>
+                                <td class="text-muted small">GATE-IN</td>
+                                <td class="text-primary fw-bold">YARD</td>
+                                <td><span class="badge bg-primary">RECEIVING</span></td>
+                                <td>-</td>
                             </tr>
                         </tbody>
                     </table>
@@ -74,22 +64,22 @@
         <div class="card-custom p-4 mb-4">
             <h6 class="text-dark fw-bold mb-3">Stacking Statistics</h6>
             <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-                <span class="text-muted small">Total Containers in Yard</span>
-                <span class="fw-bold text-dark">1,452</span>
+                <span class="text-muted small">Ready to Stack (Gate-In)</span>
+                <span class="fw-bold text-warning" id="readyCount">Loading...</span>
             </div>
             <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                <span class="text-muted small">Stacked Today</span>
+                <span class="fw-bold text-dark">42</span>
+            </div>
+            <div class="d-flex align-items-center justify-content-between">
                 <span class="text-muted small">Total Slots Available</span>
                 <span class="fw-bold text-success">842</span>
             </div>
-            <div class="d-flex align-items-center justify-content-between">
-                <span class="text-muted small">Reefer Points Used</span>
-                <span class="fw-bold text-info">42 / 60</span>
-            </div>
         </div>
 
-        <div class="alert alert-warning border-0 shadow-sm">
-            <h6 class="fw-bold small"><i class="fas fa-exclamation-triangle me-2"></i>Yard Congestion Alert</h6>
-            <p class="extra-small mb-0">Block C is currently at 92% capacity. Recommend redirecting new arrivals to Block G or H.</p>
+        <div class="alert alert-info border-0 shadow-sm">
+            <h6 class="fw-bold small"><i class="fas fa-info-circle me-2"></i>Integrated Workflow</h6>
+            <p class="extra-small mb-0">Halaman ini kini terintegrasi dengan data <strong>Gate-In</strong>. Pilih kontainer yang sudah masuk gerbang untuk dicatat posisi tumpukannya di Yard.</p>
         </div>
     </div>
 </div>
@@ -105,50 +95,131 @@
             <div class="modal-body p-4">
                 <form id="formStacking">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Container Number</label>
-                        <input type="text" class="form-control" name="container_no" placeholder="MSKU1234567">
+                        <label class="form-label fw-bold">Search Container (Gated-In)</label>
+                        <select class="form-select select2-container" name="container_no" id="container_no" required>
+                            <option value="">-- Search No. Container --</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Target Location (Block-Row-Tier)</label>
-                        <input type="text" class="form-control" name="location" placeholder="A-01-02-01">
+                    
+                    <div id="containerInfo" class="bg-light p-3 rounded mb-3" style="display:none;">
+                        <div class="row small">
+                            <div class="col-6"><strong>Size/Type:</strong> <span id="infoSize">-</span></div>
+                            <div class="col-6"><strong>Planning:</strong> <span id="infoPlanning">-</span></div>
+                        </div>
                     </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Yard Block</label>
+                            <select class="form-select" name="block_id" id="block_id" required>
+                                <option value="">-- Select Block --</option>
+                                <?php foreach($blocks as $b): ?>
+                                    <option value="<?= $b->id ?>"><?= $b->block_name ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold">Bay</label>
+                            <input type="number" class="form-control" name="bay" required min="1">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold">Row</label>
+                            <input type="number" class="form-control" name="row" required min="1">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold">Tier</label>
+                            <input type="number" class="form-control" name="tier" required min="1">
+                        </div>
+                    </div>
+                    
                     <div class="mb-3">
                         <label class="form-label fw-bold">Movement Reason</label>
                         <select class="form-select" name="reason">
-                            <option value="Receiving">Receiving</option>
+                            <option value="Receiving">Receiving (Gate-In to Yard)</option>
                             <option value="Shifting">Shifting (Internal)</option>
-                            <option value="Delivery">Pre-Delivery</option>
                         </select>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary-custom" onclick="save_stacking()">Confirm Movement</button>
+                <button type="button" class="btn btn-primary-custom" id="btnSave" onclick="save_stacking()">Confirm Stacking</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+$(document).ready(function() {
+    $('.select2-container').select2({
+        theme: 'bootstrap-5',
+        dropdownParent: $('#modal_stacking'),
+        ajax: {
+            url: '<?= site_url("operations/stacking/ajax_search_container") ?>',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return { term: params.term };
+            },
+            processResults: function(data) {
+                return { results: data };
+            }
+        },
+        minimumInputLength: 3
+    });
+
+    $('.select2-container').on('select2:select', function(e) {
+        var data = e.params.data;
+        $('#infoSize').text(data.size + ' / ' + data.type);
+        $('#infoPlanning').text(data.request_no);
+        $('#containerInfo').slideDown();
+    });
+});
+
 function new_stacking() {
     $('#formStacking')[0].reset();
+    $('#containerInfo').hide();
+    $('.select2-container').val(null).trigger('change');
     $('#modal_stacking').modal('show');
 }
 
 function save_stacking() {
-    Toast.fire({
-        icon: 'success',
-        title: 'Stacking movement recorded'
+    var form = $('#formStacking');
+    if (!$('#container_no').val() || !$('#block_id').val()) {
+        Toast.fire({icon: 'warning', title: 'Mohon lengkapi data kontainer dan lokasi'});
+        return;
+    }
+
+    $('#btnSave').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Saving...');
+
+    $.ajax({
+        url: '<?= site_url("operations/stacking/ajax_save") ?>',
+        type: 'POST',
+        data: form.serialize(),
+        dataType: 'json',
+        success: function(res) {
+            $('#btnSave').prop('disabled', false).html('Confirm Stacking');
+            if(res.status) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Stacked!',
+                    text: res.message,
+                    background: '#1e293b', color: '#e2e8f0'
+                });
+                $('#modal_stacking').modal('hide');
+                // Optional: refresh page or table
+                location.reload();
+            } else {
+                Toast.fire({icon: 'error', title: res.message});
+            }
+        },
+        error: function() {
+            $('#btnSave').prop('disabled', false).html('Confirm Stacking');
+            Toast.fire({icon: 'error', title: 'Server error'});
+        }
     });
-    $('#modal_stacking').modal('hide');
 }
 </script>
-
-<?php ob_start(); ?>
-<script>
-</script>
-<?php $this->load->vars(['page_js' => ob_get_clean()]); ?>
 
 <style>
 .extra-small { font-size: 11px; }

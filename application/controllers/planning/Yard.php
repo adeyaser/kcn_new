@@ -20,14 +20,12 @@ class Yard extends MY_Controller {
             'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
         ];
 
-        // Get approved planning requests (ship calls)
-        $this->db->select('p.id, p.request_no, v.vessel_name, p.voyage_in, p.voyage_out');
+        $this->db->select('p.id, p.request_no, v.vessel_name, p.voyage_in, p.voyage_out, p.operation_type');
         $this->db->from('opr_planning_requests p');
         $this->db->join('mst_vessels v', 'v.id = p.vessel_id');
         $this->db->where_in('p.status', ['APPROVED', 'OPERATING']);
         $this->data['planning_requests'] = $this->db->get()->result();
 
-        // Real Yard Blocks from Database
         $this->data['yard_blocks'] = $this->db->where('is_active', 1)->get('mst_yard_blocks')->result();
 
         $this->render('planning/yard/index');
@@ -51,26 +49,75 @@ class Yard extends MY_Controller {
             'tiers' => $profile_row->max_tier
         ];
         
-        $containers = $this->db->where('block_id', $block_id)->get('opr_yard_inventory')->result();
+        // 1. Get REAL inventory (joined with manifest for details)
+        $this->db->select('i.*, m.type, m.size, m.pod');
+        $this->db->from('opr_yard_inventory i');
+        $this->db->join('opr_manifests m', 'm.container_no = i.container_no', 'left');
+        $this->db->where('i.block_id', $block_id);
+        $real_inventory = $this->db->get()->result();
+        
+        // 2. Get PLANNED inventory from manifest
+        $this->db->select('m.*, p.request_no');
+        $this->db->from('opr_manifests m');
+        $this->db->join('opr_planning_requests p', 'p.id = m.planning_id');
+        $this->db->where('m.planned_block_id', $block_id);
+        $planned_inventory = $this->db->get()->result();
+        
+        // Combine them
+        $all_data = [];
+        foreach($real_inventory as $r) {
+            $all_data[] = [
+                'id' => $r->id,
+                'container_no' => $r->container_no,
+                'bay' => $r->bay,
+                'row' => $r->row,
+                'tier' => $r->tier,
+                'type' => $r->type ?? 'GP',
+                'size' => $r->size ?? '20',
+                'pod' => $r->pod ?? '-',
+                'status' => 'PRESENT',
+                'color' => '#1e293b' // Dark for real
+            ];
+        }
+        foreach($planned_inventory as $p) {
+            // Only add if not already present in real inventory (to avoid duplicates)
+            $exists = false;
+            foreach($real_inventory as $r) {
+                if($r->container_no == $p->container_no) { $exists = true; break; }
+            }
+            
+            if(!$exists) {
+                $all_data[] = [
+                    'id' => $p->id,
+                    'container_no' => $p->container_no,
+                    'bay' => $p->planned_bay,
+                    'row' => $p->planned_row,
+                    'tier' => $p->planned_tier,
+                    'status' => 'PLANNED',
+                    'request_no' => $p->request_no,
+                    'color' => '#3b82f6' // Blue for planned
+                ];
+            }
+        }
         
         // Get unplanned containers for yard
         $unplanned = [];
         if($planning_id) {
-            $unplanned = $this->Planning_model->get_unplanned_yard_containers($planning_id);
-        }
-
-        // Get planned equipments
-        $equipments = [];
-        if($planning_id) {
-            $equipments = $this->Planning_model->get_equipments_by_planning_id($planning_id);
+            // For Yard Planning, we want containers in manifest that DON'T HAVE planned_block_id AND DON'T HAVE REAL INVENTORY
+            $this->db->select('m.*');
+            $this->db->from('opr_manifests m');
+            $this->db->join('opr_yard_inventory i', 'i.container_no = m.container_no', 'left');
+            $this->db->where('m.planning_id', $planning_id);
+            $this->db->where('m.planned_block_id IS NULL');
+            $this->db->where('i.container_no IS NULL');
+            $unplanned = $this->db->get()->result();
         }
 
         $this->json_response([
             'status' => 'success', 
             'profile' => $profile,
-            'data' => $containers,
-            'unplanned' => $unplanned,
-            'equipments' => $equipments
+            'data' => $all_data,
+            'unplanned' => $unplanned
         ]);
     }
 
@@ -81,45 +128,36 @@ class Yard extends MY_Controller {
         $tier = $this->input->post('tier');
         $block_id = $this->input->post('block');
 
-        // Fetch manifest to get container_no
-        $manifest = $this->db->where('id', $manifest_id)->get('opr_manifests')->row();
-        if (!$manifest) {
-            $this->json_response(['status' => 'error', 'message' => 'Manifest not found']);
-            return;
-        }
-
         $data = [
-            'block_id' => $block_id,
-            'bay' => $bay,
-            'row' => $row,
-            'tier' => $tier,
-            'container_no' => $manifest->container_no,
-            'last_update' => date('Y-m-d H:i:s')
+            'planned_block_id' => $block_id,
+            'planned_bay' => $bay,
+            'planned_row' => $row,
+            'planned_tier' => $tier
         ];
 
-        // Upsert into opr_yard_inventory
-        $this->db->where('container_no', $manifest->container_no);
-        $exists = $this->db->get('opr_yard_inventory')->row();
+        $this->db->where('id', $manifest_id);
+        $update = $this->db->update('opr_manifests', $data);
 
-        if ($exists) {
-            $this->db->where('id', $exists->id);
-            $this->db->update('opr_yard_inventory', $data);
+        if ($update) {
+            $this->json_response(['status' => 'success', 'message' => 'Yard pre-planning saved']);
         } else {
-            $this->db->insert('opr_yard_inventory', $data);
+            $this->json_response(['status' => 'error', 'message' => 'Failed to save planning']);
         }
-
-        $this->json_response(['status' => 'success', 'message' => 'Container planned to yard position']);
     }
 
     public function ajax_cancel_yard_stowage() {
-        $manifest_id = $this->input->post('id');
+        $id = $this->input->post('id'); // manifest id
         
-        $manifest = $this->db->where('id', $manifest_id)->get('opr_manifests')->row();
-        if ($manifest) {
-            $this->db->where('container_no', $manifest->container_no);
-            $this->db->delete('opr_yard_inventory');
-        }
+        $data = [
+            'planned_block_id' => NULL,
+            'planned_bay' => NULL,
+            'planned_row' => NULL,
+            'planned_tier' => NULL
+        ];
+
+        $this->db->where('id', $id);
+        $this->db->update('opr_manifests', $data);
         
-        $this->json_response(['status' => 'success', 'message' => 'Yard placement cancelled']);
+        $this->json_response(['status' => 'success', 'message' => 'Yard planning cancelled']);
     }
 }

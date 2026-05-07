@@ -294,8 +294,9 @@
 
     <div class="col-md-3">
         <div class="card-vessel">
-            <div class="vessel-header">
+            <div class="vessel-header d-flex justify-content-between align-items-center">
                 <h6><i class="fas fa-ship me-2"></i>Vessel Stowage</h6>
+                <div id="operationBadge" class="badge bg-white text-primary fw-bold" style="display:none;">-</div>
             </div>
             <div class="card-body">
 
@@ -791,6 +792,18 @@ function loadVesselData() {
                     cachedData.containers = res.data;
                     cachedData.profile = res.profile;
                     cachedData.unplanned = res.unplanned;
+                    cachedData.operation_type = res.operation_type;
+
+                    // Update operation badge
+                    const opBadge = $('#operationBadge');
+                    opBadge.show();
+                    if(res.operation_type === 'DIS') {
+                        opBadge.html('<i class="fas fa-arrow-down me-1"></i> BONGKAR').removeClass('text-primary text-success').addClass('text-danger');
+                    } else if(res.operation_type === 'LOD') {
+                        opBadge.html('<i class="fas fa-arrow-up me-1"></i> MUAT').removeClass('text-primary text-danger').addClass('text-success');
+                    } else {
+                        opBadge.html('<i class="fas fa-exchange-alt me-1"></i> BONGKAR MUAT').addClass('text-primary');
+                    }
 
                     $('#stat_total').text(res.data.length + res.unplanned.length);
                     $('#stat_planned').text(res.data.length);
@@ -849,12 +862,20 @@ function renderUnplannedList(list) {
     if (list.length > 0) {
         $('#unplannedSection').show();
         list.forEach(item => {
+            let yardInfo = '';
+            if (item.block_id) {
+                yardInfo = `<div class="extra-small text-muted"><i class="fas fa-map-marker-alt me-1"></i>${item.block_id}-${item.yard_bay}-${item.yard_row}-${item.yard_tier}</div>`;
+            }
+
             const html = `
                 <div class="unplanned-item-card unplanned-item" 
                      onclick="selectForPlanning(${JSON.stringify(item).replace(/"/g, '&quot;')}, this)">
-                    <div class="card-body p-2 d-flex justify-content-between align-items-center">
-                        <span class="small fw-bold text-dark">${item.container_no}</span>
-                        <span class="badge bg-light text-dark border small" style="font-size: 10px;">${item.size}ft ${item.type}</span>
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-bold text-dark">${item.container_no}</span>
+                            <span class="badge bg-light text-dark border" style="font-size: 9px;">${item.size}ft ${item.type}</span>
+                        </div>
+                        ${yardInfo}
                     </div>
                 </div>
             `;

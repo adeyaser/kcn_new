@@ -297,23 +297,15 @@
                         </div>
 
                         <div class="mb-4">
-                            <h6 class="text-info border-bottom border-light pb-2 mb-3 small fw-bold text-uppercase">Color Legend</h6>
-                            <div class="d-flex flex-wrap gap-2">
+                            <h6 class="text-info border-bottom border-light pb-2 mb-3 small fw-bold text-uppercase">Status Legend</h6>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
                                 <div class="d-flex align-items-center me-2 mb-1">
-                                    <span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: #2563eb;"></span>
-                                    <span class="small" style="font-size: 10px;">GP (General)</span>
+                                    <span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: #1e293b;"></span>
+                                    <span class="small" style="font-size: 10px;">In Yard (Actual)</span>
                                 </div>
                                 <div class="d-flex align-items-center me-2 mb-1">
-                                    <span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: #ffffff; border: 1px solid #cbd5e1;"></span>
-                                    <span class="small" style="font-size: 10px;">Reefer</span>
-                                </div>
-                                <div class="d-flex align-items-center me-2 mb-1">
-                                    <span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: #dc2626;"></span>
-                                    <span class="small" style="font-size: 10px;">Hazardous</span>
-                                </div>
-                                <div class="d-flex align-items-center me-2 mb-1">
-                                    <span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: #16a34a;"></span>
-                                    <span class="small" style="font-size: 10px;">Empty</span>
+                                    <span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: #3b82f6;"></span>
+                                    <span class="small" style="font-size: 10px;">Planned (Manifest)</span>
                                 </div>
                             </div>
                         </div>
@@ -407,8 +399,8 @@ function loadYardData() {
                 renderEquipmentList(res.equipments);
                 renderUnplannedList(res.unplanned);
                 
-                // Show unplanned list for Block B
-                if(blockId === 'BLOCK-B') {
+                // Show unplanned list if any containers are available
+                if(res.unplanned && res.unplanned.length > 0) {
                     $('#unplannedSection').show();
                 } else {
                     $('#unplannedSection').hide();

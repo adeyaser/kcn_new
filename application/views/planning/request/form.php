@@ -107,6 +107,13 @@
                             </select>
                         </div>
                         <div class="col-md-2">
+                            <label class="form-label">Loosing Type</label>
+                            <select class="form-select" name="loosing_type" id="loosing_type">
+                                <option value="TRUCK_NON_LOOSING" <?= isset($request) && $request->loosing_type == 'TRUCK_NON_LOOSING' ? 'selected' : '' ?>>Truck Non Loosing</option>
+                                <option value="TRUCK_LOOSING" <?= isset($request) && $request->loosing_type == 'TRUCK_LOOSING' ? 'selected' : '' ?>>Truck Loosing</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label">Booking Limit</label>
                             <input type="number" class="form-control" name="booking_limit" id="booking_limit" value="<?= isset($request) ? $request->booking_limit : '500' ?>">
                         </div>
@@ -451,34 +458,70 @@ function updateGuide() {
     var content = "";
 
     if (type === 'DIS') {
-        title = "DIS (Inbound Discharge Only)";
+        title = "BONGKAR (Discharge Operations)";
         content = `
-            <ul class="mb-0">
-                <li><strong>Langkah 1:</strong> Siapkan manifest bongkar dari file BAPLIE atau CSV.</li>
-                <li><strong>Langkah 2:</strong> Pastikan POD (Point of Discharge) sesuai dengan Terminal KCN.</li>
-                <li><strong>Langkah 3:</strong> Setelah request disetujui, buka modul <strong>Vessel Planning</strong> untuk memplot posisi discharge.</li>
-                <li><strong>Langkah 4:</strong> Buka <strong>Yard Planning</strong> untuk alokasi blok penumpukan kontainer impor.</li>
-            </ul>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-2 fw-bold text-info"><i class="fas fa-ship me-2"></i>Vessel Steps:</p>
+                    <ul class="ps-3 mb-0">
+                        <li>Siapkan manifest bongkar melalui upload file <strong>BAPLIE</strong> atau template <strong>CSV</strong>.</li>
+                        <li>Gunakan modul <strong>Vessel Planning</strong> untuk memplot posisi kontainer yang akan dibongkar.</li>
+                        <li>Pastikan urutan pembongkaran tidak mengganggu stabilitas kapal (Heeling/Trim).</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2 fw-bold text-info"><i class="fas fa-th me-2"></i>Yard Steps:</p>
+                    <ul class="ps-3 mb-0">
+                        <li>Lakukan <strong>Pre-Yard Planning</strong> untuk mengalokasi blok penumpukan kontainer impor.</li>
+                        <li>Pastikan ketersediaan alat (RTG/RS) di blok tujuan untuk mempercepat alur <i>Haulage</i>.</li>
+                        <li>Monitor real-time bongkar melalui dashboard operasional.</li>
+                    </ul>
+                </div>
+            </div>
         `;
     } else if (type === 'LOD') {
-        title = "LOD (Outbound Loading Only)";
+        title = "MUAT (Loading Operations)";
         content = `
-            <ul class="mb-0">
-                <li><strong>Langkah 1:</strong> Pastikan kontainer sudah terkumpul di Yard (Pre-stacking).</li>
-                <li><strong>Langkah 2:</strong> Upload Load List untuk validasi data kontainer yang akan naik kapal.</li>
-                <li><strong>Langkah 3:</strong> Gunakan <strong>Vessel Planning</strong> untuk menentukan Bay Plan (stabilitas kapal).</li>
-                <li><strong>Langkah 4:</strong> Periksa Closing Time agar tidak ada kontainer yang terlambat masuk gate.</li>
-            </ul>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-2 fw-bold text-success"><i class="fas fa-boxes me-2"></i>Yard Steps:</p>
+                    <ul class="ps-3 mb-0">
+                        <li>Pastikan kontainer sudah <strong>Gated-In</strong> dan berstatus <strong>Stacked</strong> di Yard.</li>
+                        <li>Gunakan <strong>Yard Inventory</strong> untuk memvalidasi posisi pengambilan (pick-up) oleh internal truck.</li>
+                        <li>Periksa status pembayaran (Billing) sebelum kontainer direncanakan muat.</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2 fw-bold text-success"><i class="fas fa-anchor me-2"></i>Vessel Steps:</p>
+                    <ul class="ps-3 mb-0">
+                        <li>Susun <strong>Stowage Plan</strong> di modul Vessel Planning berdasarkan berat kontainer (Heavier on Bottom).</li>
+                        <li>Perhatikan <strong>Closing Time</strong> untuk membatasi penerimaan kontainer di gate.</li>
+                        <li>Siapkan dokumen <i>Load List</i> final sebelum kapal berangkat.</li>
+                    </ul>
+                </div>
+            </div>
         `;
     } else {
-        title = "VSL (Combined Discharge & Load)";
+        title = "VSL (Combined Bongkar Muat)";
         content = `
-            <ul class="mb-0">
-                <li><strong>Tips:</strong> Gunakan mode ini untuk efisiensi "Double Banking" (sekali sandar bongkar muat).</li>
-                <li><strong>Langkah 1:</strong> Upload Manifest gabungan atau lakukan upload terpisah.</li>
-                <li><strong>Langkah 2:</strong> Prioritaskan <strong>Discharge Planning</strong> sebelum Load Planning agar slot di kapal kosong.</li>
-                <li><strong>Langkah 3:</strong> Koordinasikan dengan <strong>Yard Planning</strong> untuk menghindari tabrakan arus alat.</li>
-            </ul>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-2 fw-bold text-primary"><i class="fas fa-sync me-2"></i>Strategy:</p>
+                    <ul class="ps-3 mb-0">
+                        <li>Gunakan metode <strong>Double Banking</strong> (bongkar dan muat bersamaan) untuk efisiensi waktu sandar.</li>
+                        <li>Prioritaskan <strong>Discharge Planning</strong> pada slot yang akan diisi oleh kontainer muat (Re-stow prevention).</li>
+                        <li>Koordinasikan pembagian crane agar tidak terjadi <i>collision</i> antar alat.</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2 fw-bold text-primary"><i class="fas fa-clipboard-check me-2"></i>Checklist:</p>
+                    <ul class="ps-3 mb-0">
+                        <li>Validasi Manifest gabungan (Inbound & Outbound).</li>
+                        <li>Pastikan alokasi alat di <strong>Yard Planning</strong> sudah dipisah antara area Import dan Export.</li>
+                        <li>Pantau utilisasi dermaga agar tidak melebihi kapasitas sandar.</li>
+                    </ul>
+                </div>
+            </div>
         `;
     }
 

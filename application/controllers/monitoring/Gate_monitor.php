@@ -1,19 +1,18 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Receiving extends MY_Controller {
+class Gate_monitor extends MY_Controller {
 
     public function __construct() {
         parent::__construct();
-        $this->check_permission('operations/receiving', 'can_view');
+        $this->check_permission('monitoring/gate_monitor', 'can_view');
     }
 
     public function index() {
-        $this->data['page_title'] = 'Receiving & Delivery Monitoring';
+        $this->data['page_title'] = 'Gate Transaction Monitor';
 
         $today = date('Y-m-d');
 
-        // Stats today
         $this->data['stats'] = [
             'receiving_in'   => $this->db->where('activity_type', 'RECEIVING')->where('DATE(gate_in_time)', $today)->count_all_results('opr_gate_transactions'),
             'delivery_out'   => $this->db->where('activity_type', 'DELIVERY')->where('DATE(gate_out_time)', $today)->count_all_results('opr_gate_transactions'),
@@ -21,7 +20,6 @@ class Receiving extends MY_Controller {
             'pending_tca'    => $this->db->where('status', 'PLANNED')->count_all_results('opr_tca_assignments'),
         ];
 
-        // Active planning requests
         $this->db->select('p.id, p.request_no, v.vessel_name, p.operation_type, p.eta');
         $this->db->from('opr_planning_requests p');
         $this->db->join('mst_vessels v', 'v.id = p.vessel_id', 'left');
@@ -36,15 +34,15 @@ class Receiving extends MY_Controller {
             'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js'
         ];
 
-        $this->render('operations/receiving/index');
+        $this->render('monitoring/gate_monitor/index');
     }
 
     public function ajax_list() {
         ob_start();
-        $type       = $this->input->post('activity_type') ?: '';
-        $status     = $this->input->post('status') ?: '';
-        $date       = $this->input->post('date') ?: '';
-        $planning   = $this->input->post('planning_id') ?: '';
+        $type     = $this->input->post('activity_type') ?: '';
+        $status   = $this->input->post('status') ?: '';
+        $date     = $this->input->post('date') ?: '';
+        $planning = $this->input->post('planning_id') ?: '';
 
         $this->db->select('g.*, t.police_number as truck_plate, t.driver_name, pr.request_no, v.vessel_name');
         $this->db->from('opr_gate_transactions g');
@@ -88,18 +86,18 @@ class Receiving extends MY_Controller {
             }
 
             $data[] = [
-                'no'           => $i + 1,
-                'gate_no'      => $r->gate_no,
-                'container'    => $r->container_no,
-                'size_type'    => $r->container_size . '\' ' . $r->container_type,
-                'truck'        => $r->truck_plate ?? $r->police_number,
-                'driver'       => $r->driver_name ?? '-',
-                'activity'     => '<span class="badge px-2" style="background:' . $at['bg'] . '20;border:1px solid ' . $at['bg'] . '40;color:' . $at['bg'] . ';border-radius:6px;">' . $at['label'] . '</span>',
-                'planning'     => $r->request_no ? ($r->request_no . '<br><small class="text-muted">' . ($r->vessel_name ?? '') . '</small>') : '<span class="text-muted">-</span>',
-                'gate_in'      => $r->gate_in_time ? date('d/m H:i', strtotime($r->gate_in_time)) : '-',
-                'gate_out'     => $r->gate_out_time ? date('d/m H:i', strtotime($r->gate_out_time)) : '-',
-                'duration'     => $duration,
-                'status'       => '<span class="badge px-2 py-1" style="background:' . $s['bg'] . '20;border:1px solid ' . $s['bg'] . '40;color:' . $s['bg'] . ';border-radius:6px;">' . $s['label'] . '</span>',
+                'no'       => $i + 1,
+                'gate_no'  => $r->gate_no,
+                'container'=> $r->container_no,
+                'size_type'=> $r->container_size . '\' ' . $r->container_type,
+                'truck'    => $r->truck_plate ?? $r->police_number,
+                'driver'   => $r->driver_name ?? '-',
+                'activity' => '<span class="badge px-2" style="background:' . $at['bg'] . '20;border:1px solid ' . $at['bg'] . '40;color:' . $at['bg'] . ';border-radius:6px;">' . $at['label'] . '</span>',
+                'planning' => $r->request_no ? ($r->request_no . '<br><small class="text-muted">' . ($r->vessel_name ?? '') . '</small>') : '<span class="text-muted">-</span>',
+                'gate_in'  => $r->gate_in_time  ? date('d/m H:i', strtotime($r->gate_in_time))  : '-',
+                'gate_out' => $r->gate_out_time ? date('d/m H:i', strtotime($r->gate_out_time)) : '-',
+                'duration' => $duration,
+                'status'   => '<span class="badge px-2 py-1" style="background:' . $s['bg'] . '20;border:1px solid ' . $s['bg'] . '40;color:' . $s['bg'] . ';border-radius:6px;">' . $s['label'] . '</span>',
             ];
         }
 
@@ -110,11 +108,11 @@ class Receiving extends MY_Controller {
     public function ajax_stats() {
         $today = date('Y-m-d');
         $stats = [
-            'receiving_today'  => $this->db->where('activity_type', 'RECEIVING')->where('DATE(gate_in_time)', $today)->count_all_results('opr_gate_transactions'),
-            'delivery_today'   => $this->db->where('activity_type', 'DELIVERY')->where('DATE(gate_in_time)', $today)->count_all_results('opr_gate_transactions'),
-            'in_yard'          => $this->db->where('status', 'IN_YARD')->count_all_results('opr_gate_transactions'),
-            'checked_out'      => $this->db->where('status', 'CHECKED_OUT')->where('DATE(gate_out_time)', $today)->count_all_results('opr_gate_transactions'),
-            'pending_tca'      => $this->db->where('status', 'PLANNED')->count_all_results('opr_tca_assignments'),
+            'receiving_today' => $this->db->where('activity_type', 'RECEIVING')->where('DATE(gate_in_time)', $today)->count_all_results('opr_gate_transactions'),
+            'delivery_today'  => $this->db->where('activity_type', 'DELIVERY')->where('DATE(gate_in_time)', $today)->count_all_results('opr_gate_transactions'),
+            'in_yard'         => $this->db->where('status', 'IN_YARD')->count_all_results('opr_gate_transactions'),
+            'checked_out'     => $this->db->where('status', 'CHECKED_OUT')->where('DATE(gate_out_time)', $today)->count_all_results('opr_gate_transactions'),
+            'pending_tca'     => $this->db->where('status', 'PLANNED')->count_all_results('opr_tca_assignments'),
         ];
         $this->json_response($stats);
     }

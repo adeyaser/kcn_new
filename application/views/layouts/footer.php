@@ -12,8 +12,12 @@ window.addEventListener('load', () => {
 
 // Sidebar toggle
 document.getElementById('sidebarToggle').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('collapsed');
-    document.getElementById('mainContent').classList.toggle('expanded');
+    if (window.innerWidth <= 991.98) {
+        document.getElementById('sidebar').classList.toggle('mobile-open');
+    } else {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('mainContent').classList.toggle('expanded');
+    }
 });
 document.getElementById('sidebarClose')?.addEventListener('click', () => {
     document.getElementById('sidebar').classList.remove('mobile-open');

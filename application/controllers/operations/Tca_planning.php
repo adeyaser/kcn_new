@@ -193,4 +193,64 @@ class Tca_planning extends MY_Controller {
         $this->data['assignments'] = $assignments;
         $this->load->view('operations/tca_planning/print_bulk', $this->data);
     }
+    public function bulk_create() {
+        $this->db->select('p.*, v.vessel_name');
+        $this->db->from('opr_planning_requests p');
+        $this->db->join('mst_vessels v', 'v.id = p.vessel_id');
+        $this->db->where_in('p.status', ['APPROVED', 'OPERATING']);
+        $plannings = $this->db->get()->result();
+
+        $gates = $this->db->get('mst_gates')->result();
+        
+        $this->json_response([
+            'plannings' => $plannings,
+            'gates' => $gates
+        ]);
+    }
+
+    public function ajax_get_manifest_bulk() {
+        $planning_id = $this->input->get('planning_id');
+        
+        $this->db->select('m.*, t.assignment_no, tr.police_number, t.estimated_arrival, t.status as tca_status, t.truck_id, t.gate_id');
+        $this->db->from('opr_manifests m');
+        $this->db->join('opr_tca_assignments t', 't.manifest_id = m.id', 'left');
+        $this->db->join('mst_trucks tr', 'tr.id = t.truck_id', 'left');
+        $this->db->where('m.planning_id', $planning_id);
+        $data = $this->db->get()->result();
+        
+        $this->json_response(['status' => 'success', 'data' => $data]);
+    }
+
+    public function ajax_save_bulk() {
+        $planning_id = $this->input->post('planning_id');
+        $assignments = $this->input->post('assignments');
+        
+        $count = 0;
+        foreach($assignments as $a) {
+            if(empty($a['est_arrival']) && empty($a['truck_id'])) continue;
+            
+            $exists = $this->db->where('manifest_id', $a['manifest_id'])->get('opr_tca_assignments')->row();
+            
+            $data = [
+                'planning_id' => $planning_id,
+                'manifest_id' => $a['manifest_id'],
+                'gate_id' => $a['gate_id'],
+                'truck_id' => !empty($a['truck_id']) ? $a['truck_id'] : ($exists ? $exists->truck_id : NULL),
+                'estimated_arrival' => !empty($a['est_arrival']) ? $a['est_arrival'] : ($exists ? $exists->estimated_arrival : date('Y-m-d H:i:s')),
+                'status' => 'PLANNED',
+                'created_by' => $this->session->userdata('user_id')
+            ];
+            
+            if($exists) {
+                $this->db->where('id', $exists->id)->update('opr_tca_assignments', $data);
+            } else {
+                $data['assignment_no'] = 'TCA-' . date('Ymd') . '-' . sprintf('%04d', rand(1, 9999));
+                $data['qr_code_token'] = bin2hex(random_bytes(10));
+                $this->db->insert('opr_tca_assignments', $data);
+            }
+            $count++;
+        }
+        
+        $this->json_response(['status' => 'success', 'message' => "$count assignments updated"]);
+    }
 }

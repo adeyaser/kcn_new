@@ -31,10 +31,15 @@ class Vessel extends MY_Controller {
             $this->json_response(['status' => 'error', 'message' => 'Planning ID required']);
             return;
         }
+
+        $planning = $this->Planning_model->get_by_id($planning_id);
+        if (!$planning) {
+            $this->json_response(['status' => 'error', 'message' => 'Planning not found']);
+            return;
+        }
         
         $profile = $this->Planning_model->get_vessel_profile_by_planning_id($planning_id);
         if (!$profile) {
-            // Fallback default if profile not found
             $profile = (object)[
                 'bay_count' => 14, 
                 'row_count' => 8, 
@@ -43,39 +48,50 @@ class Vessel extends MY_Controller {
             ];
         }
 
-        $manifest = $this->Planning_model->get_manifest_by_planning_id($planning_id);
+        // 1. Get containers currently PLANNED on vessel
+        $manifest_on_vessel = $this->Planning_model->get_containers_on_vessel($planning_id);
         $containers = [];
         
-        foreach ($manifest as $m) {
-            if ($m->bay) { // Only planned ones
-                $color = '#eab308'; // yellow (default for planned)
-                if ($m->hz == 'Y') $color = '#dc2626'; // red
-                if ($m->type == 'RF') $color = '#ffffff'; // white
+        foreach ($manifest_on_vessel as $m) {
+            $color = '#eab308'; // yellow (default for planned)
+            if ($m->hz == 'Y') $color = '#dc2626'; // red
+            if ($m->type == 'RF') $color = '#ffffff'; // white
 
-                $containers[] = [
-                    'id' => $m->id,
-                    'bay' => $m->bay,
-                    'row' => $m->row,
-                    'tier' => $m->tier,
-                    'deck' => $m->deck,
-                    'container_no' => $m->container_no,
-                    'size' => $m->size,
-                    'type' => $m->type,
-                    'color' => $color,
-                    'pol' => 'IDJKT',
-                    'pod' => $m->pod
-                ];
-            }
+            $containers[] = [
+                'id' => $m->id,
+                'bay' => $m->bay,
+                'row' => $m->row,
+                'tier' => $m->tier,
+                'deck' => $m->deck,
+                'container_no' => $m->container_no,
+                'size' => $m->size,
+                'type' => $m->type,
+                'color' => $color,
+                'pol' => 'IDJKT',
+                'pod' => $m->pod
+            ];
         }
 
-        // Get unplanned containers for the sidebar
-        $unplanned = $this->Planning_model->get_unplanned_containers($planning_id);
+        // 2. Get containers for the "Work List" sidebar based on Operation Type
+        $unplanned = [];
+        if ($planning->operation_type == 'DIS') {
+            // For DISCHARGE: Show containers that are NOT YET PLANNED (assuming they are on ship but position unknown)
+            // Or usually, for DIS, they are ALL planned first then "dropped"
+            $unplanned = $this->Planning_model->get_unplanned_containers($planning_id);
+        } else if ($planning->operation_type == 'LOD') {
+            // For LOADING: Show containers that are in the YARD and NOT YET PLANNED on vessel
+            $unplanned = $this->Planning_model->get_containers_to_load($planning_id);
+        } else {
+            // FOR VSL (Both): Mix logic (for now just all unplanned)
+            $unplanned = $this->Planning_model->get_unplanned_containers($planning_id);
+        }
 
         // Get planned equipments
         $equipments = $this->Planning_model->get_equipments_by_planning_id($planning_id);
 
         $this->json_response([
             'status' => 'success', 
+            'operation_type' => $planning->operation_type,
             'profile' => [
                 'bays' => (int)$profile->bay_count, 
                 'rows' => (int)$profile->row_count, 

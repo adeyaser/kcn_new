@@ -71,6 +71,7 @@ class Request extends MY_Controller {
     }
 
     public function ajax_list() {
+        ob_start();
         $list = $this->Planning_model->get_datatables();
         $data = array();
         $no = isset($_POST['start']) ? $_POST['start'] : 0;
@@ -80,12 +81,16 @@ class Request extends MY_Controller {
             $row = array();
             $row[] = $no;
             $row[] = $req->request_no;
-            $row[] = $req->vessel_name;
-            $row[] = $req->voyage_in . ' / ' . $req->voyage_out;
-            $row[] = '<span class="badge bg-secondary">'.$req->operation_type.'</span>';
-            $row[] = $req->service_type;
-            $row[] = $req->request_type;
-            $row[] = date('d-m-Y H:i', strtotime($req->eta));
+            $row[] = $req->vessel_name ?? '-';
+            $row[] = ($req->voyage_in ?? '-') . ' / ' . ($req->voyage_out ?? '-');
+            $row[] = '<span class="badge bg-secondary">'.($req->operation_type ?? '').'</span>';
+            $row[] = $req->service_type ?? '-';
+            $row[] = $req->request_type ?? '-';
+            
+            $loosing_badge = ($req->loosing_type == 'TRUCK_LOOSING') ? 'bg-warning text-dark' : 'bg-info text-dark';
+            $row[] = '<span class="badge '.$loosing_badge.'">'.str_replace('_', ' ', $req->loosing_type ?? '').'</span>';
+            
+            $row[] = $req->eta ? date('d-m-Y H:i', strtotime($req->eta)) : '-';
             
             // Status badge
             $status_class = 'bg-secondary';
@@ -117,6 +122,7 @@ class Request extends MY_Controller {
             "recordsFiltered" => $this->Planning_model->count_filtered(),
             "data" => $data,
         );
+        ob_clean(); // Clear any stray PHP output before sending JSON
         $this->json_response($output);
     }
 
@@ -149,6 +155,7 @@ class Request extends MY_Controller {
             'pod' => $this->input->post('pod'),
             'fpod' => $this->input->post('fpod'),
             'request_type' => $this->input->post('request_type'),
+            'loosing_type' => $this->input->post('loosing_type'),
         );
 
         if (!$is_edit) {
@@ -280,7 +287,6 @@ class Request extends MY_Controller {
     }
 
     public function ajax_preview_manifest() {
-        log_message('error', 'ajax_preview_manifest hit');
         if (!isset($_FILES['manifest_file'])) {
             $this->json_response(['status' => 'error', 'message' => 'No file uploaded']);
             return;
@@ -288,7 +294,6 @@ class Request extends MY_Controller {
 
         $file = $_FILES['manifest_file'];
         $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        log_message('error', 'File extension: ' . $ext);
         
         $data = [];
         
@@ -299,7 +304,6 @@ class Request extends MY_Controller {
                 $delimiter = (strpos($firstLine, ';') !== false) ? ';' : ',';
                 rewind($handle);
                 
-                log_message('error', 'Detected delimiter: ' . $delimiter);
 
                 $header = fgetcsv($handle, 1000, $delimiter); 
                 while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
@@ -315,7 +319,6 @@ class Request extends MY_Controller {
                     }
                 }
                 fclose($handle);
-                log_message('error', 'Parsed rows: ' . count($data));
             }
         } else {
             $this->json_response(['status' => 'error', 'message' => 'Currently only CSV format is supported for instant preview.']);

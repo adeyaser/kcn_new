@@ -46,6 +46,8 @@
                             </a>
                         <?php endif; ?>
 
+
+
                         <?php if($menu->menu_name == 'Master Data' || $menu->menu_name == 'Master'): ?>
                             <a href="<?= site_url('master/gate') ?>" class="nav-link <?= (uri_string() == 'master/gate') ? 'active' : '' ?>">
                                 <i class="fas fa-door-open nav-icon"></i>

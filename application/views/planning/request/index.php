@@ -18,6 +18,7 @@
                                 <th>Voyage (In/Out)</th>
                                 <th>Service Type</th>
                                 <th>Request Type</th>
+                                <th>Loosing Type</th>
                                 <th>ETA</th>
                                 <th>Status</th>
                                 <th width="10%">Action</th>

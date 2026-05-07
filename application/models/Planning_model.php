@@ -22,7 +22,7 @@ class Planning_model extends CI_Model {
         $i = 0;
         foreach ($this->column_search as $item) 
         {
-            if(isset($_POST['search']['value'])) 
+            if(isset($_POST['search']['value']) && $_POST['search']['value'] != '') 
             {
                 if($i===0) 
                 {
@@ -57,9 +57,7 @@ class Planning_model extends CI_Model {
         if(isset($_POST['length']) && $_POST['length'] != -1)
         $this->db->limit($_POST['length'], isset($_POST['start']) ? $_POST['start'] : 0);
         $query = $this->db->get();
-        $result = $query->result();
-        log_message('error', 'Planning_model get_datatables count: ' . count($result));
-        return $result;
+        return $query->result();
     }
 
     function count_filtered()
@@ -141,6 +139,25 @@ class Planning_model extends CI_Model {
         $this->db->from('opr_manifests');
         $this->db->where('planning_id', $planning_id);
         $this->db->where('bay IS NULL');
+        return $this->db->get()->result();
+    }
+
+    public function get_containers_on_vessel($planning_id) {
+        // For DISCHARGE: Containers that have bay assigned
+        // For LOADING: Containers that have bay assigned (already loaded)
+        $this->db->from('opr_manifests');
+        $this->db->where('planning_id', $planning_id);
+        $this->db->where('bay IS NOT NULL');
+        return $this->db->get()->result();
+    }
+
+    public function get_containers_to_load($planning_id) {
+        // Containers in manifest for LOD that are in Yard (ready to be loaded)
+        $this->db->select('m.*, i.block_id, i.bay as yard_bay, i.row as yard_row, i.tier as yard_tier');
+        $this->db->from('opr_manifests m');
+        $this->db->join('opr_yard_inventory i', 'i.container_no = m.container_no', 'inner');
+        $this->db->where('m.planning_id', $planning_id);
+        $this->db->where('m.bay IS NULL'); // Not yet loaded to vessel
         return $this->db->get()->result();
     }
 
